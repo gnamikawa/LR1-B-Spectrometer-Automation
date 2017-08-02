@@ -31,7 +31,8 @@ unsigned long	Required;
 const unsigned short int	MAXREPORTSIZE = 256;
 unsigned char	*OutputReport;//[MAXREPORTSIZE];
 int temp1;
-unsigned int ProductID=0x0001;
+//unsigned int ProductID=0x0001;
+unsigned int ProductID=0x0100;
 unsigned char	DevGeneralNmb;
 unsigned char	DevInitNmb=1;
 
@@ -40,7 +41,9 @@ unsigned char	DevInitNmb=1;
 
 bool smpl_FindTheHID()
 {
-	const unsigned int VendorID = 0x20E2;	// ASEQ Instruments vendor ID
+    //e220:0100
+	//const unsigned int VendorID = 0x20E2;	// ASEQ Instruments vendor ID
+	const unsigned int VendorID = 0xE220;	// ASEQ Instruments vendor ID
 
 	struct hid_device_info *devs;
 

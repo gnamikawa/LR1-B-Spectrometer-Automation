@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 		printf("Export Option Failed\n");
 
 	if (-1 == GPIODirection(POUT, OUT) || -1 == GPIODirection(PIN, IN))
-		printf("Direction Option Failed\n");
+		printf("Direction Option Failed OUT[%i] IN[%i]\n",GPIODirection(POUT, OUT),GPIODirection(PIN, IN));
 
 
 	//---------------------------------
@@ -126,21 +126,23 @@ int main(int argc, char *argv[]) {
 
 
 static gpointer doScan( gpointer data ) {
-	printf("Do Scan");
+	printf("Do Scan\n");
 	fflush(stdout);
 	if(!smpl_DevDetect()) {
+        printf("smpl_DevDetect() == [%s]\n",smpl_DevDetect()?"true":"false");
 		if(!smpl_FindTheHID()) {
-			gdk_threads_add_idle(setText, "Spectroscope not Found");
+            printf("smpl_FindTheHID() == [%s]\n",smpl_FindTheHID()?"true":"false");
+			gdk_threads_add_idle(setText, "Spectroscope not Found\n");
 			return FALSE;
 		}
 	}
-	gdk_threads_add_idle(setText, "Spectroscope Found");
+	gdk_threads_add_idle(setText, "Spectroscope Found\n");
 
 
 	GPIOWrite(POUT, HIGH);
 
 	smpl_reset();
-	printf("Wavelenth\n");
+	printf("Wavelength\n");
 	fflush(stdout);
 	if(waveRead == false) {
 		gdk_threads_add_idle(setText, "Reading Wavelength Calibration");
