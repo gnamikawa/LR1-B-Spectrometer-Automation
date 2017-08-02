@@ -7,6 +7,7 @@
  Description : Hello World in C, Ansi-style
  ============================================================================
  */
+#include <sys/stat.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -20,6 +21,7 @@
 
 #define PIN 20
 #define POUT 14
+#define DEBUG 0
 
 #include "smpl1.h"
 #include "smpl1.c"
@@ -30,23 +32,22 @@ static GThread * workerThread = NULL;
 
 
 double WavelengthArray[4096];
-bool waveRead;
+bool   waveRead;
 
-static gpointer doScan( gpointer data );
-void readWavelength(double * WaveLengthArray);
-void readSpec(int ExpN, int NScans, int Blank, signed short * rawSpec);
+static gpointer doScan(gpointer data);
+
+void   readWavelength(double * WaveLengthArray);
+void   readSpec(int ExpN, int NScans, int Blank, signed short * rawSpec);
 
 
-gboolean setText(gpointer txt) {
+gboolean setText(gpointer txt){
 	gtk_label_set_text(lblMsg, txt);
 	return FALSE;
-}
+    }
 
-static gpointer thread_func( gpointer data )
-{
-	while( TRUE )
-	{
-		sleep( 50 );
+static gpointer thread_func( gpointer data ){
+	while(TRUE){
+		sleep(50);
 
 		printf("Checking pin\n");
 		int value = GPIOPoll(PIN);
@@ -54,13 +55,13 @@ static gpointer thread_func( gpointer data )
 
 		char * actionTxt = "Button push";
 		gdk_threads_add_idle(setText, actionTxt);
-	}
+        }
 
 	return( NULL );
-}
+    }
 
-G_MODULE_EXPORT void on_btnLed_clicked( GtkButton *button, gpointer   data )
-{
+/*
+G_MODULE_EXPORT void on_btnLed_clicked(GtkButton *button, gpointer data){
 	printf("button press\n");
 
 	gtk_label_set_text(lblMsg, "Starting");
@@ -74,22 +75,21 @@ G_MODULE_EXPORT void on_btnLed_clicked( GtkButton *button, gpointer   data )
 		g_thread_join(workerThread);
 
 	workerThread = g_thread_new(NULL, doScan, NULL);
-}
+    }
+*/
 
-G_MODULE_EXPORT void on_btnQuit_clicked( GtkButton *button, gpointer   data ) {
-	gtk_main_quit();
-}
+int main(int argc, char *argv[]){
+	if(DEBUG)printf("DEBUG|  Execute function: main()\n");
 
-int main(int argc, char *argv[]) {
-	printf("Start\n");
+	if(-1 == GPIOExport(POUT) || -1 == GPIOExport(PIN)){
+		printf("ERROR|  Export Option Failed\n");
+        }
 
-	if (-1 == GPIOExport(POUT) || -1 == GPIOExport(PIN))
-		printf("Export Option Failed\n");
+	if(-1 == GPIODirection(POUT, OUT) || -1 == GPIODirection(PIN, IN)){
+		printf("ERROR|  Direction Option Failed\n");
+        }
 
-	if (-1 == GPIODirection(POUT, OUT) || -1 == GPIODirection(PIN, IN))
-		printf("Direction Option Failed OUT[%i] IN[%i]\n",GPIODirection(POUT, OUT),GPIODirection(PIN, IN));
-
-
+    /*
 	//---------------------------------
 	//----- CREATE THE GTK WINDOW -----
 	//---------------------------------
@@ -109,44 +109,47 @@ int main(int argc, char *argv[]) {
 
 	g_object_unref(G_OBJECT(gtkBuilder));
 	gtk_widget_show(window);
-
 	printf("Start2\n");
 
 	//g_thread_new(NULL, thread_func, NULL );
 
 	fflush(stdout);
 	gtk_main();
+    */
+    
+    if(workerThread != NULL){
+		g_thread_join(workerThread);
+        }
 
+	workerThread = g_thread_new(NULL, doScan, NULL); //Execute doScan() in a different thread
+    
 	if(workerThread != NULL){
 		g_thread_join(workerThread);
-	}
+        }
 
 	return 0;
-}
+    }
 
 
-static gpointer doScan( gpointer data ) {
-	printf("Do Scan\n");
+static gpointer doScan(gpointer data){
+	if(DEBUG)printf("DEBUG|  Execute function: doScan()\n");
 	fflush(stdout);
-	if(!smpl_DevDetect()) {
-        printf("smpl_DevDetect() == [%s]\n",smpl_DevDetect()?"true":"false");
-		if(!smpl_FindTheHID()) {
-            printf("smpl_FindTheHID() == [%s]\n",smpl_FindTheHID()?"true":"false");
-			gdk_threads_add_idle(setText, "Spectroscope not Found\n");
+	if(!smpl_DevDetect()){ //Check if the device was detected earlier in boolean variable "DeviceDetected".
+		if(!smpl_FindTheHID()){ //If the boolean variable "DeviceDetected" was not set, try to see if the device was detected.
+            printf("Spectroscope not found.\n"
+                   "Exiting.\n");
 			return FALSE;
-		}
-	}
-	gdk_threads_add_idle(setText, "Spectroscope Found\n");
-
-
+            }
+        }
+    printf("Spectroscope found.\n");
+    
 	GPIOWrite(POUT, HIGH);
 
 	smpl_reset();
 	printf("Wavelength\n");
 	fflush(stdout);
 	if(waveRead == false) {
-		gdk_threads_add_idle(setText, "Reading Wavelength Calibration");
-
+		printf("Reading Wavelength Calibration\n");
 		readWavelength(WavelengthArray);
 		waveRead = true;
 
@@ -155,9 +158,13 @@ static gpointer doScan( gpointer data ) {
 	printf("Run Scan\n");
 	fflush(stdout);
 	gdk_threads_add_idle(setText, "Running Scan");
-	signed short rawSpec[4096];
+    signed short rawSpec[4096];
+    
+    //Questionable Functions Here
 	memset(rawSpec, 0,4096);
 	readSpec(21,1,0,rawSpec);
+    
+    
 	printf("Save Scan\n");
 	fflush(stdout);
 	gdk_threads_add_idle(setText, "Saving Data");
@@ -168,7 +175,10 @@ static gpointer doScan( gpointer data ) {
 	printf("Saving file %s\n", filename);
 	fflush(stdout);
 
-
+    struct stat spectraStat={0};
+    if (stat("spectra", &spectraStat) == -1){
+        mkdir("spectra", 0775);
+        }
 	FILE * fp = fopen(filename, "w" );
 	if(fp != NULL) {
 
@@ -190,11 +200,12 @@ static gpointer doScan( gpointer data ) {
 	return FALSE;
 }
 
-void readWavelength(double * WaveLengthArray){
+void readWavelength(double* WaveLengthArray){
 	unsigned char cmd[10];
 	unsigned char response[70];
-	unsigned char	ReadArray[8192];
+	unsigned char ReadArray[8192];
 
+    //Initialize "response" and "ReadArray" to zero.
 	memset(response, 0 , 70);
 	memset(ReadArray, 0 , 8192);
 
@@ -236,6 +247,7 @@ void readWavelength(double * WaveLengthArray){
 	double C1=atof(StringTmp);
 
 	//end of reading calibration coefficients
+    printf("Calibration Coefficients:\n");
 	printf("A1= %f\n",A1);
 	printf("B1= %f\n",B1);
 	printf("C1= %f\n",C1);
@@ -258,10 +270,10 @@ void readSpec(int ExpN, int NScans, int Blank, signed short * rawSpec) {
 
 	memset(cmd, 0, 10);
 	cmd[1]=1;
-	cmd[2]=ExpN;		//low
+	cmd[2]=ExpN;	//low
 	cmd[7]=ExpN>>8;	//high
 	cmd[3]=NScans;	//nmbScans
-	cmd[4]=Blank;		//blanc scans number
+	cmd[4]=Blank;	//blank scans number
 	cmd[5]=1;
 	if(Trigger==0)
 		cmd[6]=0;
@@ -290,14 +302,14 @@ void readSpec(int ExpN, int NScans, int Blank, signed short * rawSpec) {
 	for(int i=1;i<=NScans;i++)
 	{
 		smpl_GetSpectra(rawSpec, 1,0, 3652, Fast, 0, 33, 3685);
-
-		/*OutputReport1[1]=9;//move address
+		/*  OutputReport1[1]=9;//move address
 			OutputReport1[2]=0x01;
 			OutputReport1[3]=0x80;
-			ReadAndWriteToDevice(InputReport1,OutputReport1,1);*/
+			ReadAndWriteToDevice(InputReport1,OutputReport1,1);
+        */
 
 		//todo normalize?
 	}
-
+    
 	smpl_resetAddress();
 }

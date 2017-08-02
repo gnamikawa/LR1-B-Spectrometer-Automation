@@ -13,34 +13,33 @@
 #include "hid.c"
 
 //Application global variables 
-unsigned long	ActualBytesRead;
-unsigned long			BytesRead;
-//HIDP_CAPS		Capabilities;
-unsigned long			cbBytesRead;
+unsigned long ActualBytesRead;
+unsigned long BytesRead;
+//HIDP_CAPS     Capabilities;
+unsigned long cbBytesRead;
 //PSP_DEVICE_INTERFACE_DETAIL_DATA	detailData;
-bool			DeviceDetected;
-//HANDLE			DeviceHandle;
+bool          DeviceDetected;
+//HANDLE        DeviceHandle;
 
 char * DevicePath = NULL; //freed in shutdown
 
-unsigned long			dwError;
-unsigned char	InputReport[100];
-unsigned long	Length;
-unsigned long			NumberOfBytesRead;
-unsigned long	Required;
-const unsigned short int	MAXREPORTSIZE = 256;
-unsigned char	*OutputReport;//[MAXREPORTSIZE];
-int temp1;
-//unsigned int ProductID=0x0001;
-unsigned int ProductID=0x0100;
-unsigned char	DevGeneralNmb;
-unsigned char	DevInitNmb=1;
+unsigned long	         dwError;
+unsigned char	         InputReport[100];
+unsigned long	         Length;
+unsigned long	         NumberOfBytesRead;
+unsigned long	         Required;
+const unsigned short int MAXREPORTSIZE = 256;
+unsigned char*           OutputReport;//[MAXREPORTSIZE];
+int                      temp1;
+//unsigned int             ProductID=0x0001;
+unsigned int             ProductID=0x0100;
+unsigned char            DevGeneralNmb;
+unsigned char            DevInitNmb=1;
 
 
 
 
-bool smpl_FindTheHID()
-{
+bool smpl_FindTheHID(){ //Working.
     //e220:0100
 	//const unsigned int VendorID = 0x20E2;	// ASEQ Instruments vendor ID
 	const unsigned int VendorID = 0xE220;	// ASEQ Instruments vendor ID
@@ -49,9 +48,9 @@ bool smpl_FindTheHID()
 
 	devs = hid_enumerate(VendorID, ProductID);
 	if(devs != NULL) { //Just find the first spectrocope. Multiple scopes not currently supported
-		if(DevicePath != NULL)
+		if(DevicePath != NULL){
 			free(DevicePath);
-
+        }
 		DevicePath = malloc((strlen(devs->path) + 1) * sizeof(char));
 		strcpy(DevicePath, devs->path);
 
@@ -182,14 +181,14 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 {
 	unsigned short tmp1;
 	unsigned short tmp2;
-	signed short	InputSpec_loc[4096];
-	unsigned char startTrans;
-	unsigned char endTrans;
+	signed   short InputSpec_loc[4096];
+	unsigned char  startTrans;
+	unsigned char  endTrans;
 	unsigned short startPTshift;
 	unsigned short endPTshift;
-	int RLn;
-	int devd;
-	int cnt1;
+	int            RLn;
+	int            devd;
+	int            cnt1;
 
 	RLn=32;
 
@@ -200,6 +199,7 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 	{
 		if((startPix<64)&(endPix>=3616))//get full spectra
 		{
+            OutputReport=(char*)malloc(100);
 			OutputReport[1]=4;//read
 			OutputReport[3]=SpecNmb;
 			OutputReport[4]=0;//read every pixel
@@ -273,8 +273,7 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 		}
 		//end of transmission to *InputSpec1
 	}
-
-
+    free(OutputReport);
 	return devd;
 }
 
