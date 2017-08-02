@@ -32,17 +32,16 @@ const unsigned short int MAXREPORTSIZE = 256;
 unsigned char*           OutputReport;//[MAXREPORTSIZE];
 int                      temp1;
 //unsigned int             ProductID=0x0001;
-unsigned int             ProductID=0x0100;
+unsigned int             ProductID=0xc246;
 unsigned char            DevGeneralNmb;
 unsigned char            DevInitNmb=1;
-
 
 
 
 bool smpl_FindTheHID(){ //Working.
     //e220:0100
 	//const unsigned int VendorID = 0x20E2;	// ASEQ Instruments vendor ID
-	const unsigned int VendorID = 0xE220;	// ASEQ Instruments vendor ID
+	const unsigned int VendorID = 0x046d;	// ASEQ Instruments vendor ID
 
 	struct hid_device_info *devs;
 
@@ -78,14 +77,14 @@ void WriteReport()
 	hid_device *handle;
 	handle = hid_open_path(DevicePath);
 	if (!handle) {
-		printf("unable to open device\n");
+		printf("Failed to open device!\n");
 		DeviceDetected = false;
 		return;
 	}
 	int res = hid_write(handle, OutputReport, OutputReportByteLength);
 	if(res < 0) {
 		// error
-		printf("Unable to write report\n");
+		printf("Write Operation Failed!\n");
 	}
 
 	hid_close(handle);
@@ -104,9 +103,10 @@ void ReadReport()
 		DeviceDetected = false;
 		return;
 	}
-	int res = hid_read_timeout(handle, InputReport, InputReportByteLength, 1*1000);
+	int res = hid_read_timeout(handle, InputReport, InputReportByteLength, 1000);
 	if(res <= 0) {
 		// error
+        printf("Read Timeout.\n",InputReport);
 	}
 	//Temp to make the hid api respond like windows
 	memmove(&InputReport[1], InputReport, InputReportByteLength );
@@ -167,7 +167,7 @@ void smpl_ReadAndWriteToDevice(unsigned char	*InputReport1, unsigned char * Outp
 	}
 
 	if(InputReport1 != NULL) {
-		InputReport1[0] = 0;
+		InputReport1[0] = '\0';
 		for(int k1=0;k1<=63;k1++)
 		{
 			t2=InputReport[k1];
@@ -199,6 +199,7 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 	{
 		if((startPix<64)&(endPix>=3616))//get full spectra
 		{
+            OutputReport=(char*)malloc(100);
 			OutputReport[1]=4;//read
 			OutputReport[3]=SpecNmb;
 			OutputReport[4]=0;//read every pixel
@@ -272,6 +273,7 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 		}
 		//end of transmission to *InputSpec1
 	}
+    free(OutputReport);
 	return devd;
 }
 
@@ -293,7 +295,7 @@ void smpl_resetAddress() {
 	memset(cmd, 0, 10);
 
 	cmd[1]=0x03;
-	smpl_ReadAndWriteToDevice(NULL,cmd,1);
+	smpl_ReadAndWriteToDevice(NULL,cmd,1); //Read nothing. Send 0x03. Reconnect device.
 }
 
 void smpl_shutdown() {
