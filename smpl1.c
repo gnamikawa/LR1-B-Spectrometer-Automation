@@ -90,7 +90,7 @@ void WriteReport()
 
 	hid_close(handle);
 
-	//memset( OutputReport, 0 , OutputReportByteLength);
+	//memset( OutputReport, 0 , OutputReportByteLength); //Might be important (was commented out)
 }
 
 void ReadReport()
@@ -149,7 +149,7 @@ void smpl_ReadAndWriteToDevice_new(unsigned char	*InputReport1, unsigned char	*O
 void smpl_ReadAndWriteToDevice(unsigned char	*InputReport1, unsigned char * OutputReport1, int DevDet)
 {
 	unsigned char t2;
-
+    
 	OutputReport=OutputReport1;
 
 	if(DevDet!=0)
@@ -199,7 +199,6 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 	{
 		if((startPix<64)&(endPix>=3616))//get full spectra
 		{
-            OutputReport=(char*)malloc(100);
 			OutputReport[1]=4;//read
 			OutputReport[3]=SpecNmb;
 			OutputReport[4]=0;//read every pixel
@@ -273,7 +272,6 @@ int smpl_GetSpectra(signed short *InputSpec1, unsigned char SpecNmb, unsigned sh
 		}
 		//end of transmission to *InputSpec1
 	}
-    free(OutputReport);
 	return devd;
 }
 

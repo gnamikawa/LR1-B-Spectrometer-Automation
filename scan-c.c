@@ -155,30 +155,35 @@ static gpointer doScan(gpointer data){
 
 		//Todo check for success here.
 	}
-	printf("Run Scan\n");
+	printf("Running Scan...\n");
 	fflush(stdout);
-	gdk_threads_add_idle(setText, "Running Scan");
     signed short rawSpec[4096];
     
-    //Questionable Functions Here
 	memset(rawSpec, 0,4096);
 	readSpec(21,1,0,rawSpec);
     
     
-	printf("Save Scan\n");
+    //=== Save Results =================================================
+	printf("Saving Scan...\n");
 	fflush(stdout);
-	gdk_threads_add_idle(setText, "Saving Data");
-
-
+    
+    //Parse filename.
 	char filename[1024];
 	sprintf(filename, "./spectra/%u.csv", (unsigned)time(NULL));
-	printf("Saving file %s\n", filename);
+	printf("Saving file as %s\n", filename);
 	fflush(stdout);
-
+    
+    //Create folder if one doesn't exist.
     struct stat spectraStat={0};
     if (stat("spectra", &spectraStat) == -1){
-        mkdir("spectra", 0775);
+        if(mkdir("spectra", 0775) == -1){
+            printf("ERROR|  Failed to create directory \"spectra\"!");
+            printf("Exiting.");
+            return FALSE;
+            }
         }
+        
+    //Save file.
 	FILE * fp = fopen(filename, "w" );
 	if(fp != NULL) {
 
@@ -196,7 +201,8 @@ static gpointer doScan(gpointer data){
 
 	GPIOWrite(POUT, LOW);
 
-
+    //==================================================================
+    
 	return FALSE;
 }
 
@@ -222,8 +228,14 @@ void readWavelength(double* WaveLengthArray){
 
 	for(int i=0;i<=readCycle;i++)
 	{
+		//int addr=AddressFLASH+i*64;
+		//cmd[1]=0xA1;
+		//cmd[2]=(char)((addr)>>16);
+		//cmd[3]=(char)((addr)>>8);
+		//cmd[4]=(char)(addr);
+        
 		int addr=AddressFLASH+i*64;
-		cmd[1]=0xA1;
+		cmd[1]=0x1A;
 		cmd[2]=(char)((addr)>>16);
 		cmd[3]=(char)((addr)>>8);
 		cmd[4]=(char)(addr);
@@ -233,17 +245,22 @@ void readWavelength(double* WaveLengthArray){
 		for(int j=0;j<64;j++)
 			ReadArray[i*64+j]=response[j];
 	}
-
-
-	char StringTmp[16];
-	for(int i=0;i<16;i++)
-		StringTmp[i]=ReadArray[1+i];
+    
+	char StringTmp[15];
+    
+    //Coefficient A1
+	for(int i=0;i<=15;i++)
+		StringTmp[i]=ReadArray[i];
 	double A1=atof(StringTmp);
-	for(int i=0;i<16;i++)
-		StringTmp[i]=ReadArray[1+16+i];
+    
+    //Coefficient B1
+	for(int i=0;i<=15;i++)
+		StringTmp[i]=ReadArray[16+i];
 	double B1=atof(StringTmp);
-	for(int i=0;i<16;i++)
-		StringTmp[i]=ReadArray[1+2*16+i];
+    
+    //Coefficient C1
+	for(int i=0;i<=15;i++)
+		StringTmp[i]=ReadArray[32+i];
 	double C1=atof(StringTmp);
 
 	//end of reading calibration coefficients
@@ -268,13 +285,13 @@ void readSpec(int ExpN, int NScans, int Blank, signed short * rawSpec) {
 	unsigned char cmd[10];
 	unsigned char recievedData[70];
 
-	memset(cmd, 0, 10);
-	cmd[1]=1;
-	cmd[2]=ExpN;	//low
-	cmd[7]=ExpN>>8;	//high
-	cmd[3]=NScans;	//nmbScans
-	cmd[4]=Blank;	//blank scans number
-	cmd[5]=1;
+	memset(cmd, 0, 10); //Set all values of cmd[] to zero.
+	cmd[0]=3;           //
+	cmd[1]=ExpN;	    //low
+	cmd[2]=ExpN>>8;	    //high
+	cmd[3]=NScans;	    //nmbScans
+	cmd[4]=Blank;	    //blank scans number
+	cmd[5]=1;           //
 	if(Trigger==0)
 		cmd[6]=0;
 	else
@@ -291,7 +308,9 @@ void readSpec(int ExpN, int NScans, int Blank, signed short * rawSpec) {
 	memset(cmd,0,10); //reuse the command array
 
 	//This will wait until the spectroscope says the data has been collected
-	cmd[1]=2;//get status
+	//cmd[1]=2;//get status
+	cmd[0]=0;//get status
+	cmd[1]=1;//get status
 	smpl_ReadAndWriteToDevice(recievedData,cmd,0);
 	while(recievedData[3]!=0)
 		smpl_ReadAndWriteToDevice(recievedData,cmd,1);
