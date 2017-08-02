@@ -95,7 +95,6 @@ char      g_returnReport[100]={0};  //InputReport
 
 //Function Prototypes
 int pathHID(void);
-int getStatus(void);
 int readReport(char*, int, int);
 int calcConst(double*);
 int readFlash(u_int8_t *buffer, 
@@ -134,10 +133,6 @@ int main(int argc, char** argv){
     //saveData(WLA,NULL);
     return SUCCESS;
     }
-
-int getStatus(void){
-    return 0;
-    }
     
 int pathHID(void){
     //Open HID to start interfacing.
@@ -162,11 +157,11 @@ int pathHID(void){
     printf("Spectrometer not found.\n");
 	return -1;
     }
-int readReport(char* rtn, int returncode, int returnReportByteLength){
+int readReport(char* rtn, int returncode, int returnBytes){
     int hidReadError;
     
     //Flush contents of returnReport with zeros.
-    memset(rtn,0,returnReportByteLength);
+    memset(rtn,0,returnBytes);
     
     //Open HID to start interfacing.
     hid_device *handle;                 //Create HID container.
@@ -177,7 +172,7 @@ int readReport(char* rtn, int returncode, int returnReportByteLength){
         hid_close(handle);//Close the door. Its polite.
         return FAILURE;
         }
-    if((hidReadError = hid_read_timeout(handle,rtn,returnReportByteLength,1000)) <= 0){ //Scan for output. Return -1 if it takes too long.
+    if((hidReadError = hid_read_timeout(handle,rtn,returnBytes,1000)) <= 0){ //Scan for output. Return -1 if it takes too long.
         printf("HID Read %s.\n", (hidReadError == -1)?"Error":"Timeout");
         hid_close(handle);//Close the door. Its polite.
         return FAILURE;
@@ -188,7 +183,7 @@ int readReport(char* rtn, int returncode, int returnReportByteLength){
     if(DEBUG){printf("Successfully obtained return code. [0x%02x == 0x%02x]\n", LOW_BYTE(rtn[0]), returncode);}
 
     //Temp to make the hid api respond like windows
-    memmove(&rtn[1], rtn, returnReportByteLength);
+    memmove(&rtn[1], rtn, returnBytes);
     rtn[0]=0;
     
     //Close the HID
@@ -197,14 +192,8 @@ int readReport(char* rtn, int returncode, int returnReportByteLength){
     return SUCCESS;
     }
 int writeReport(char* cmd_in){
-    char cmd[100]={0};
-    for(int i=0;i<100+1;i=i+1){
-        cmd[i+1] = cmd_in[i];
-        }
-	cmd[0] = ZERO_REPORT_ID;
-	cmd[9] = 0x0E;
-    
-    if(DEBUG){for(int i=0;i<=100;i=i+1){printf("Output|  %02i: 0x%02x\n",i,cmd[i]);}}
+	cmd_in[0] = ZERO_REPORT_ID;
+	cmd_in[9] = 0x0E;
     
 	hid_device *handle;
 	handle = hid_open_path(g_devicePath);
@@ -222,7 +211,7 @@ int writeReport(char* cmd_in){
     return 0;
     }
 int calcConst(double* waveLengthArray){
-	unsigned char cmd[10];
+	unsigned char cmd[6];
 	unsigned char response[70];
 	unsigned char readArray[8192];
 	int           bytesRd=80;
@@ -247,12 +236,13 @@ int calcConst(double* waveLengthArray){
         }
 	for(int i=0;i<=readCycle;i++){
 		addr  = flashOffset+(i*64);
-		cmd[0] = READ_FLASH_REQUEST;
-		cmd[1] = (char)((addr)>>16);
-		cmd[2] = (char)((addr)>>8);
-		cmd[3] = (char)(addr);
-        cmd[5] = 0x60;
-        
+		cmd[0] = ZERO_REPORT_ID;
+		cmd[1] = READ_FLASH_REQUEST;
+		cmd[2] = (char)((addr)>>16);
+		cmd[3] = (char)((addr)>>8);
+        cmd[5] = (char)(addr);
+        cmd[6] = 0x60;
+		
 		//smpl_ReadAndWriteToDevice(response,cmd,0);
 		writeReport(cmd);
         if(readReport(response, CORRECT_READ_FLASH_REPLY, PACKET_SIZE) == FAILURE){
@@ -293,11 +283,12 @@ int calcConst(double* waveLengthArray){
 		waveLengthArray[i]=A1*i*i+B1*i+C1;
         }
     }
-int readFlash(u_int8_t *buffer,         //Buffer
-              u_int32_t absoluteOffset, //0
-              u_int32_t bytesToRead){   //64    
+int readFlash(u_int8_t *buffer,       
+              u_int32_t absoluteOffset,
+              u_int32_t bytesToRead){ 
     u_int8_t  rtn[EXTENDED_PACKET_SIZE];
     u_int8_t  cmd[10];
+	
     u_int32_t numOfPacketsToGet = 0;
     u_int8_t  numOfPacketsToGetCurrent = 0;
     u_int8_t  numOfPacketsReceivedCurrent = 0;
@@ -322,6 +313,7 @@ int readFlash(u_int8_t *buffer,         //Buffer
         }
     if(buffer == NULL){
         //return INPUT_PARAMETER_NOT_INITIALIZED;
+		if(DEBUG){printf("INPUT_PARAMETER_NOT_INITIALIZED");}
         return FAILURE;
         }
     
@@ -344,12 +336,13 @@ int readFlash(u_int8_t *buffer,         //Buffer
     while(numOfPacketsToGet){
         numOfPacketsToGetCurrent = (numOfPacketsToGet>MAX_READ_FLASH_PACKETS)?MAX_READ_FLASH_PACKETS:numOfPacketsToGet;
         
-        cmd[0] = READ_FLASH_REQUEST;
-        cmd[1] = LOW_BYTE(LOW_WORD(absoluteOffset + offsetIncrement));
-        cmd[2] = HIGH_BYTE(LOW_WORD(absoluteOffset + offsetIncrement));
-        cmd[3] = LOW_BYTE(HIGH_WORD(absoluteOffset + offsetIncrement));
-        cmd[4] = HIGH_BYTE(HIGH_WORD(absoluteOffset + offsetIncrement));
-        cmd[5] = numOfPacketsToGetCurrent;
+		cmd[0] = ZERO_REPORT_ID;
+        cmd[1] = READ_FLASH_REQUEST;
+        cmd[2] = LOW_BYTE(LOW_WORD(absoluteOffset + offsetIncrement));
+        cmd[3] = HIGH_BYTE(LOW_WORD(absoluteOffset + offsetIncrement));
+        cmd[4] = LOW_BYTE(HIGH_WORD(absoluteOffset + offsetIncrement));
+        cmd[5] = HIGH_BYTE(HIGH_WORD(absoluteOffset + offsetIncrement));
+        cmd[6] = numOfPacketsToGetCurrent;
         
         writeReport(cmd);
         
@@ -425,12 +418,13 @@ int getFrameFormat(u_int16_t* startElement,
                    u_int16_t* endElement, 
                    u_int8_t*  reductionMode, 
                    u_int16_t* pixelsInFrame){
-    char cmd[CommandReportByteLength];
+    char cmd[1]={0};
     char report[PACKET_SIZE];
     
     memset(cmd,    0, CommandReportByteLength);
     memset(report, 0, PACKET_SIZE);\
-    cmd[0] = GET_FRAME_FORMAT_REQUEST;
+    cmd[0] = ZERO_REPORT_ID;
+	cmd[1] = GET_FRAME_FORMAT_REQUEST;
     
     writeReport(cmd);
     
