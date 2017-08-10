@@ -1,0 +1,11 @@
+#!/bin/bash
+#Makescript v1.00
+#Genzo Namikawa
+#genzo.namikawa@jacks.sdstate.edu
+
+printf "Makescript v1.00\n\n"
+printf "Building libspectr.cpp\n"
+g++ -Wall -c "libspectr.cpp" -ludev
+g++ -Wall -o "libspectr" "libspectr.cpp" -ludev
+rm libspectr.o
+printf "Done.\n"
