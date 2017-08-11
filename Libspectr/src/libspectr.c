@@ -866,6 +866,23 @@ int readFlash(u_int8_t *buffer, u_int32_t absoluteOffset, u_int32_t bytesToRead)
             numOfPacketsLeftCurrent = report[3];
 
             if (numOfPacketsLeftCurrent >= REMAINING_PACKETS_ERROR || (numOfPacketsLeftCurrent != numOfPacketsToGetCurrent - numOfPacketsReceivedCurrent)) {
+                if(g_DEBUG){printf("\x1b[31m" "\nREAD_FLASH_REMAINING_PACKETS_ERROR: Dumping variable data.\n" "\x1b[0m"
+                                 "numOfPacketsLeftCurrent >= REMAINING_PACKETS_ERROR || (numOfPacketsLeftCurrent != numOfPacketsToGetCurrent - numOfPacketsReceivedCurrent)\n\n"
+                                 "%i >= %i || (%i != %i - %i)\n"
+                                 "  numOfPacketsLeftCurrent:     %i\n"
+                                 "  REMAINING_PACKETS_ERROR:     %i\n"
+                                 "  numOfPacketsToGetCurrent:    %i\n"
+                                 "  numOfPacketsReceivedCurrent: %i\n\n",
+                                 numOfPacketsLeftCurrent,
+                                 REMAINING_PACKETS_ERROR,
+                                 numOfPacketsLeftCurrent,
+                                 numOfPacketsToGetCurrent,
+                                 numOfPacketsReceivedCurrent,
+                                 numOfPacketsLeftCurrent,
+                                 REMAINING_PACKETS_ERROR,
+                                 numOfPacketsToGetCurrent,
+                                 numOfPacketsReceivedCurrent);
+                             }
                 return READ_FLASH_REMAINING_PACKETS_ERROR;
             }
             continueGetInReport = (numOfPacketsLeftCurrent > 0)? true : false;

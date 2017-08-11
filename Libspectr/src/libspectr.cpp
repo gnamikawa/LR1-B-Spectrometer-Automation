@@ -20,14 +20,14 @@ extern "C"{
 
 #define MAX_FLASH_READ 0x1FFE0
     
-int g_DEBUG  = 0;
+int g_DEBUG  = 1;
 int g_VERBOSE= 0;
 
 int main(int argc, char** argv){
     LAB libspectr;
     libspectr.addArg("help",           'h');
     libspectr.addArg("verbose",        'v');
-    libspectr.addArg("readflash",      'r');
+    libspectr.addArg("getclbr",        'r');
     libspectr.addArg("getframe",       's');
     libspectr.addArg("clearmem",       'c');
     libspectr.addArg("resetdevice",    'e');
@@ -49,31 +49,31 @@ int main(int argc, char** argv){
     //Print Help Message
     if(libspectr.isEnabled(libspectr.getIDFromName("help"))){
         printf("==== Libspectr | LR1-B Automation ====                                                    \n"
-               "    Command:                                   Description:                               \n"
-               "    -h or --help                               Print this message.                        \n"
-               "    -v or --verbose                            Print an annoying amount of messages.      \n"
-               "    -r or --readflash                          Read LR1-B flash memory and output to file.\n"
-               "    -s or --readframe                          Output Singular Spectrometer Frame.        \n"
-               "    -c or --clearmem                           Clear LR1-B memory.                        \n"
-               "    -e or --resetdevice                        Reset Device Parameters and clear memory   \n"
-               "    -q or --getstatus                          Retrieve status variables.                 \n"
-               "    -t or --settrigger                         Set Software Trigger.                      \n"
-               "    -d or --eraseflash                         Erase LR1-B flash memory.                  \n"
-               "    -p or --getparam                           Retrieve parameter list from device.       \n"
-               "    -f or --getframeformat                     Retrieve frame format from device.         \n"
-               "    --setexposure <ExposureTime> <Force>       Set LR1-B frame exposure time.             \n"
-               "    --setallparam <NumberOfScans>              Set all LR1-B frame parameters.            \n"
-               "                  <NumberOfBlankScans>                                                    \n"
-               "                  <ScanMode>                                                              \n"
-               "                  <ExposureTime>                                                          \n"
-               "                  <EnableMode>                                                            \n"
-               "                  <SignalFrontMode>                                                       \n"
+               "    Command:                                            Description:                               \n"
+               "    -h or --help                                        Print this message.                        \n"
+               "    -v or --verbose                                     Print an annoying amount of messages.      \n"
+               "    -r or --getclbr                      !!![BROKEN]!!! Read LR1-B flash memory and output to file.\n"
+               "    -s or --getframe                                    Output Singular Spectrometer Frame.        \n"
+               "    -c or --clearmem                                    Clear LR1-B memory.                        \n"
+               "    -e or --resetdevice                                 Reset Device Parameters and clear memory   \n"
+               "    -q or --getstatus                                   Retrieve status variables.                 \n"
+               "    -t or --settrigger                                  Set Software Trigger.                      \n"
+               "    -d or --eraseflash                                  Erase LR1-B flash memory.                  \n"
+               "    -p or --getparam                                    Retrieve parameter list from device.       \n"
+               "    -f or --getframeformat                              Retrieve frame format from device.         \n"
+               "    --setexposure <ExposureTime> <Force> !!![BROKEN]!!! Set LR1-B frame exposure time.             \n"
+               "    --setallparam <NumberOfScans>                       Set all LR1-B frame parameters.            \n"
+               "                  <NumberOfBlankScans>                                                             \n"
+               "                  <ScanMode>                                                                       \n"
+               "                  <ExposureTime>                                                                   \n"
+               "                  <EnableMode>                                                                     \n"
+               "                  <SignalFrontMode>                                                                \n"
                );
         return 0;
         }
     
     //Enable if Connecting to Device
-    if(libspectr.isEnabled(libspectr.getIDFromName("readflash"))         ||
+    if(libspectr.isEnabled(libspectr.getIDFromName("getclbr"))           ||
        libspectr.isEnabled(libspectr.getIDFromName("clearmem"))          ||
        libspectr.isEnabled(libspectr.getIDFromName("setexposure"))       ||
        libspectr.isEnabled(libspectr.getIDFromName("getframe"))          ||
@@ -200,44 +200,47 @@ int main(int argc, char** argv){
         }
     
     //Read Flash and Output as File
-    if(libspectr.isEnabled(libspectr.getIDFromName("readflash"))){
+    if(libspectr.isEnabled(libspectr.getIDFromName("getclbr"))){
         u_int8_t buffer [MAX_FLASH_READ];
-        if(readFlash(buffer, 0, MAX_FLASH_READ) == 0){                
-            printf("Saving Scan...\n");
-            
-            //Parse filename.
-            char filename[1024];
-            sprintf(filename, "./spectra/%u.csv", (unsigned)time(NULL));
-            printf("Saving file as %s\n", filename);
-            
-            //Create folder if one doesn't exist.
-            struct stat spectraStat={0};
-            if (stat("spectra", &spectraStat) == -1){
-                if(mkdir("spectra", 0775) == -1){
-                    printf("ERROR|  Failed to create directory \"spectra\"!\n");
-                    printf("Exiting.\n");
-                    return -1;
-                    }
+        int result = 0;
+        
+        result = readFlash(buffer, 0, MAX_FLASH_READ);
+        
+        printf("Saving Scan...\n");
+        
+        //Parse filename.
+        char filename[1024];
+        sprintf(filename, "./Spectra/%u.clbr", (unsigned)time(NULL));
+        printf("Saving file as %s\n", filename);
+        
+        //Create folder if one doesn't exist.
+        struct stat spectraStat={0};
+        if (stat("Spectra", &spectraStat) == -1){
+            if(mkdir("Spectra", 0775) == -1){
+                printf("ERROR|  Failed to create directory \"Spectra\"!\n");
+                printf("Exiting.\n");
+                return -1;
                 }
-            fflush(stdout);
-            
-            //Save file.
-            FILE* fp = fopen(filename, "w");
-            if(fp != NULL){
-                //char bom[3] = {0xEF,0xBB,0xBF};
-                //sprintf(buffer, "%s%c",bom,buffer);
-                //for(int q=0;q<MAX_FLASH_READ;q++){
-                
-                fwrite(buffer,sizeof(char),sizeof(buffer),fp);
-                
-                //    }
-                fclose(fp);
-                printf("Saved File.\n");
-                }else{
-                printf("Failed to save file\n");
-                }
-            return 0;
             }
+        fflush(stdout);
+        
+        //Save file.
+        FILE* fp = fopen(filename, "w");
+        if(fp != NULL){
+            unsigned char bom[3] = {0xEF,0xBB,0xBF};
+            
+            fwrite(bom,sizeof(char),sizeof(bom),fp);           //Write BOM Header
+            fwrite(buffer,sizeof(u_int8_t),sizeof(buffer),fp); //Write Contents
+            
+            fclose(fp);
+            printf("Saved File.\n");
+            }else{
+            printf("Failed to save file\n");
+            return -1;
+            }
+            
+        printf("Read Flash: %s | [%i]\n",result?"Error:":"Success!", result);
+        return 0;
         }
         
     //Read Frame and Output as File
@@ -305,7 +308,8 @@ int main(int argc, char** argv){
         result = getStatus(&statusFlags, &framesInMemory);
         
         printf("Status Flag:                  %5i\n"
-               "Number of Frames in Memory:   %5i\n", statusFlags, framesInMemory);
+               "Number of Frames in Memory:   %5i\n", statusFlags, framesInMemory
+               );
         
         printf("Print Status: %s | [%i]\n",result?"Error:":"Success!", result);
         }
@@ -338,6 +342,7 @@ int main(int argc, char** argv){
         u_int16_t numOfBlankScans = 0;
         u_int8_t  scanMode        = 0;
         u_int32_t timeOfExposure  = 0;
+        int       result          = 0;
         
         getAcquisitionParameters(&numOfScans,
                                  &numOfBlankScans,
@@ -349,6 +354,8 @@ int main(int argc, char** argv){
                "Number of Blank Scans: %3i\n"
                "Scan Mode:             %3i\n"
                "Exposure Time:         %3i\n", numOfScans, numOfBlankScans, scanMode, timeOfExposure);
+               
+        printf("Get Parameters: %s | [%i]\n",result?"Error:":"Success!", result);
         }
         
     disconnectDevice();
