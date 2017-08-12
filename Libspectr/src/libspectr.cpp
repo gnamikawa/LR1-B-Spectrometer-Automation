@@ -20,7 +20,7 @@ extern "C"{
 
 #define MAX_FLASH_READ 0x1FFE0
     
-int g_DEBUG  = 1;
+int g_DEBUG  = 0;
 int g_VERBOSE= 0;
 
 int main(int argc, char** argv){
